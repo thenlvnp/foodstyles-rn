@@ -13,6 +13,7 @@ import { Controller, useForm } from "react-hook-form";
 import useMutation from "use-mutation";
 import * as SecureStore from "expo-secure-store";
 import { fetcher } from "../api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 type FormFields = {
     name: string;
     email: string;
@@ -20,7 +21,6 @@ type FormFields = {
 
 export default function EditProfileScreen() {
     const user = useAuthStore((state) => state.user);
-    console.log("user", user);
     const setAuth = useAuthStore((state) => state.setAuthStatus);
     const {
         control,
@@ -32,11 +32,10 @@ export default function EditProfileScreen() {
             email: user?.email,
         },
     });
-    const [mutate, { status }] = useMutation(
+    const [mutate, { status, reset }] = useMutation(
         ({ email, name }: { email: string; name: string }) => {
             return fetcher(
-                `
-            mutation{
+                `mutation{
                 updateUser(name:"${name}", email: "${email}") {
                     id
                     name
@@ -46,14 +45,26 @@ export default function EditProfileScreen() {
                     appleId
                 }
              }`,
-                { authorization: `Bearer ` }
+                { authorization: `Bearer ${user?.token}` }
             );
         },
         {
-            async onSuccess({ data }) {
+            async onSuccess({ input }) {
+                setTimeout(() => {
+                    reset();
+                }, 2000);
+                await AsyncStorage.setItem(
+                    "@user",
+                    JSON.stringify({
+                        ...user,
+                        name: input.name,
+                        email: input.email,
+                    })
+                );
                 setAuth("user", {
-                    name: data.name,
-                    email: data.email,
+                    ...user,
+                    name: input.name,
+                    email: input.email,
                 });
             },
             onFailure: ({ error }) => {
@@ -63,10 +74,13 @@ export default function EditProfileScreen() {
     );
     const [logout, logoutStatus] = useMutation(async () => {
         await SecureStore.deleteItemAsync("accessToken");
+        await AsyncStorage.removeItem("@user");
         setAuth("isLoggedIn", false);
+        setAuth("user", undefined);
     });
 
     const isSubmitting = formSubmitting || status === "running";
+    const isProfileUpdated = status === "success";
     const isError = status === "failure";
     const onSubmit = handleSubmit(
         async (data) => {
@@ -176,6 +190,19 @@ export default function EditProfileScreen() {
                             Failed to update profile,try again
                         </Text>
                     )}
+                    {isProfileUpdated && (
+                        <Text
+                            bg="#11b777"
+                            fontWeight="semibold"
+                            color="white"
+                            rounded="lg"
+                            fontSize="md"
+                            py="2"
+                            px="4"
+                        >
+                            Profile updated
+                        </Text>
+                    )}
                 </VStack>
                 <Button
                     variant="outline"
@@ -211,6 +238,8 @@ export default function EditProfileScreen() {
                     size="lg"
                     shadow="7"
                     onPress={onSubmit}
+                    disabled={isSubmitting}
+                    isLoading={isSubmitting}
                     _text={{ textTransform: "uppercase", fontWeight: 700 }}
                     w="40%"
                     maxWidth="100%"

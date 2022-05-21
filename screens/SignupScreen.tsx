@@ -14,6 +14,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../types";
 import { Controller, useForm } from "react-hook-form";
 import { fetcher } from "../api";
+import useMutation from "use-mutation";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Signup">;
 type FormFields = {
@@ -34,28 +35,43 @@ export default function SignupScreen({ navigation, route }: Props) {
             password: "",
         },
     });
+    const [login, loginMutation] = useMutation(
+        async ({
+            email,
+            password,
+            name,
+        }: {
+            email: string;
+            password: string;
+            name: string;
+        }) => {
+            await fetcher(`
+        mutation {
+           signUpWithEmail(name:"${name}", email:"${email}", password:"${password}"){
+           user {
+             id,
+             email,
+             name,
+             facebookId,
+             googleId,
+             appleId,
+           },
+           accessToken,
+           refreshToken
+         }
+        }`);
+        },
+        {
+            onSuccess() {
+                navigation.navigate("Login");
+            },
+        }
+    );
+    const isLoggingIn = loginMutation.status === "running" || isSubmitting;
+    const isError = loginMutation.status === "failure";
     const onSubmit = handleSubmit(
-        async (data) => {
-            console.log("data :>> ", data);
-            try {
-                const response = await fetcher(`
-    mutation {
-       signUpWithEmail(name:"${data.name}", email:"${data.email}", password:"${data.password}"){
-       user {
-         id,
-         email,
-         name,
-         facebookId,
-         googleId,
-         appleId,
-       },
-       accessToken,
-       refreshToken
-     }
-    }`);
-            } catch (error) {
-                console.log("error :>> ", error);
-            }
+        (data) => {
+            login(data);
         },
         (errors) => console.log("errors", errors)
     );
@@ -161,6 +177,7 @@ export default function SignupScreen({ navigation, route }: Props) {
                                 _focus={{
                                     bg: "white",
                                 }}
+                                keyboardType="email-address"
                                 onBlur={onBlur}
                                 onChangeText={onChange}
                                 value={value}
@@ -213,10 +230,23 @@ export default function SignupScreen({ navigation, route }: Props) {
                         </FormControl>
                     )}
                 />
-
+                {isError && (
+                    <Text
+                        bg="#f13838"
+                        fontWeight="semibold"
+                        color="white"
+                        rounded="lg"
+                        fontSize="md"
+                        py="2"
+                        px="4"
+                    >
+                        Failed to sign up, try again
+                    </Text>
+                )}
                 <Button
                     size="lg"
-                    disabled={isSubmitting}
+                    disabled={isLoggingIn}
+                    isLoading={isLoggingIn}
                     shadow="7"
                     _text={{ textTransform: "uppercase" }}
                     w="46%"

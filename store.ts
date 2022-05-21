@@ -5,6 +5,7 @@ type AuthStore = {
     isCheckingSession?: boolean;
     user?: {
         name: string;
+        token?: string;
         email: string;
     };
     setAuthStatus: <T extends keyof AuthStore>(

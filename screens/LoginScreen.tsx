@@ -34,8 +34,8 @@ export default function LoginScreen({ navigation, route }: Props) {
         formState: { errors, isSubmitting: formSubmitting },
     } = useForm<FormFields>({
         defaultValues: {
-            email: "johns@doe.com",
-            password: "p4SSW0rd",
+            email: "",
+            password: "",
         },
     });
     const [mutate, { status }] = useMutation(
@@ -68,13 +68,15 @@ export default function LoginScreen({ navigation, route }: Props) {
                     JSON.stringify({
                         email: data.loginWithEmail.user.email,
                         name: data.loginWithEmail.user.name,
+                        token: data.loginWithEmail.accessToken,
                     })
                 );
-                setAuth("isLoggedIn", true);
                 setAuth("user", {
                     email: data.loginWithEmail.user.email,
                     name: data.loginWithEmail.user.name,
+                    token: data.loginWithEmail.accessToken,
                 });
+                setAuth("isLoggedIn", true);
             },
         }
     );
@@ -147,12 +149,13 @@ export default function LoginScreen({ navigation, route }: Props) {
                                         fontWeight: "semibold",
                                     }}
                                 >
-                                    Your name
+                                    Email
                                 </FormControl.Label>
                                 <Input
                                     _focus={{
                                         bg: "white",
                                     }}
+                                    keyboardType="email-address"
                                     onBlur={onBlur}
                                     onChangeText={onChange}
                                     value={value}
@@ -179,12 +182,13 @@ export default function LoginScreen({ navigation, route }: Props) {
                                         fontWeight: "semibold",
                                     }}
                                 >
-                                    Your name
+                                    Password
                                 </FormControl.Label>
                                 <Input
                                     _focus={{
                                         bg: "white",
                                     }}
+                                    type="password"
                                     onBlur={onBlur}
                                     onChangeText={onChange}
                                     value={value}

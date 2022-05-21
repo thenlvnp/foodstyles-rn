@@ -10,11 +10,83 @@ import {
     Icon,
 } from "native-base";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { RootStackParamList } from "../types";
 import { Entypo } from "@expo/vector-icons";
+import { Controller, useForm } from "react-hook-form";
+import * as SecureStore from "expo-secure-store";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+import { RootStackParamList } from "../types";
+import useMutation from "use-mutation";
+import { fetcher } from "../api";
+import { useAuthStore } from "../store";
+
 type Props = NativeStackScreenProps<RootStackParamList, "Login">;
+type FormFields = {
+    email: string;
+    password: string;
+};
 
 export default function LoginScreen({ navigation, route }: Props) {
+    const setAuth = useAuthStore((state) => state.setAuthStatus);
+    const {
+        control,
+        handleSubmit,
+        formState: { errors, isSubmitting: formSubmitting },
+    } = useForm<FormFields>({
+        defaultValues: {
+            email: "johns@doe.com",
+            password: "p4SSW0rd",
+        },
+    });
+    const [mutate, { status }] = useMutation(
+        ({ email, password }: { email: string; password: string }) => {
+            return fetcher(`
+    mutation{
+     loginWithEmail(email: "${email}", password: "${password}"){
+         user {
+           id,
+           email,
+           name,
+           facebookId,
+           googleId,
+           appleId,
+         },
+         accessToken,
+         refreshToken
+       }
+    }`);
+        },
+        {
+            async onSuccess({ data, input }) {
+                // Store Tokens
+                await SecureStore.setItemAsync(
+                    "accessToken",
+                    data.loginWithEmail.accessToken
+                );
+                await AsyncStorage.setItem(
+                    "@user",
+                    JSON.stringify({
+                        email: data.loginWithEmail.user.email,
+                        name: data.loginWithEmail.user.name,
+                    })
+                );
+                setAuth("isLoggedIn", true);
+                setAuth("user", {
+                    email: data.loginWithEmail.user.email,
+                    name: data.loginWithEmail.user.name,
+                });
+            },
+        }
+    );
+    const isSubmitting = formSubmitting || status === "running";
+    const isError = status === "failure";
+    const onSubmit = handleSubmit(
+        async (data) => {
+            mutate(data);
+        },
+        (errors) => console.log("errors", errors)
+    );
+
     return (
         <Box
             safeArea
@@ -61,29 +133,92 @@ export default function LoginScreen({ navigation, route }: Props) {
             </Box>
             <Box pt="8" alignItems="center">
                 <VStack space={4} maxW="full" w="80%" alignItems="center">
-                    <FormControl>
-                        <FormControl.Label
-                            _text={{ color: "white", fontWeight: "semibold" }}
+                    <Controller
+                        name="email"
+                        control={control}
+                        rules={{
+                            required: "This field is required",
+                        }}
+                        render={({ field: { onChange, onBlur, value } }) => (
+                            <FormControl isInvalid={!!errors.email}>
+                                <FormControl.Label
+                                    _text={{
+                                        color: "white",
+                                        fontWeight: "semibold",
+                                    }}
+                                >
+                                    Your name
+                                </FormControl.Label>
+                                <Input
+                                    _focus={{
+                                        bg: "white",
+                                    }}
+                                    onBlur={onBlur}
+                                    onChangeText={onChange}
+                                    value={value}
+                                />
+                                {errors.email && (
+                                    <FormControl.ErrorMessage>
+                                        {errors.email?.message}
+                                    </FormControl.ErrorMessage>
+                                )}
+                            </FormControl>
+                        )}
+                    />
+                    <Controller
+                        name="password"
+                        control={control}
+                        rules={{
+                            required: "This field is required",
+                        }}
+                        render={({ field: { onChange, onBlur, value } }) => (
+                            <FormControl isInvalid={!!errors.password}>
+                                <FormControl.Label
+                                    _text={{
+                                        color: "white",
+                                        fontWeight: "semibold",
+                                    }}
+                                >
+                                    Your name
+                                </FormControl.Label>
+                                <Input
+                                    _focus={{
+                                        bg: "white",
+                                    }}
+                                    onBlur={onBlur}
+                                    onChangeText={onChange}
+                                    value={value}
+                                />
+                                {errors.password && (
+                                    <FormControl.ErrorMessage>
+                                        {errors.password?.message}
+                                    </FormControl.ErrorMessage>
+                                )}
+                            </FormControl>
+                        )}
+                    />
+                    {isError && (
+                        <Text
+                            bg="#f13838"
+                            fontWeight="semibold"
+                            color="white"
+                            rounded="lg"
+                            fontSize="md"
+                            py="2"
+                            px="4"
                         >
-                            Email
-                        </FormControl.Label>
-                        <Input />
-                    </FormControl>
-                    <FormControl>
-                        <FormControl.Label
-                            _text={{ color: "white", fontWeight: "semibold" }}
-                        >
-                            Password
-                        </FormControl.Label>
-                        <Input />
-                    </FormControl>
+                            Email or password is not correct
+                        </Text>
+                    )}
                     <Button
                         size="lg"
                         shadow="7"
+                        disabled={isSubmitting}
+                        isLoading={isSubmitting}
                         _text={{ textTransform: "uppercase" }}
                         w="46%"
                         maxWidth="100%"
-                        onPress={() => navigation.navigate("EditProfile")}
+                        onPress={onSubmit}
                     >
                         Log in
                     </Button>

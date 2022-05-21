@@ -2,16 +2,26 @@ import { FontAwesome } from "@expo/vector-icons";
 import * as Font from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
+import * as SecureStore from "expo-secure-store";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+import { useAuthStore } from "../store";
 
 export default function useCachedResources() {
     const [isLoadingComplete, setLoadingComplete] = useState(false);
-
+    const setAuthValues = useAuthStore((state) => state.setAuthStatus);
     // Load any resources or data that we need prior to rendering the app
     useEffect(() => {
         async function loadResourcesAndDataAsync() {
+            setAuthValues("isCheckingSession", true);
             try {
                 SplashScreen.preventAutoHideAsync();
-
+                // Check if token exists
+                let result = await SecureStore.getItemAsync("accessToken");
+                let user = await AsyncStorage.getItem("@user");
+                setAuthValues("isLoggedIn", !!result ? true : false);
+                console.log("user", user);
+                setAuthValues("user", JSON.parse(user ?? "{}"));
                 // Load fonts
                 await Font.loadAsync({
                     ...FontAwesome.font,
@@ -25,6 +35,7 @@ export default function useCachedResources() {
                 console.warn(e);
             } finally {
                 setLoadingComplete(true);
+                setAuthValues("isCheckingSession", false);
                 SplashScreen.hideAsync();
             }
         }

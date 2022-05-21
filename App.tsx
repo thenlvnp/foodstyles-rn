@@ -5,6 +5,7 @@ import {
     extendTheme,
     Theme,
 } from "native-base";
+import { AuthContext } from "./components/AuthProvider";
 
 import useCachedResources from "./hooks/useCachedResources";
 import useColorScheme from "./hooks/useColorScheme";
@@ -74,6 +75,9 @@ const theme: Theme = extendTheme({
         Input: {
             baseStyle: {
                 borderRadius: "md",
+                _input: {
+                    fontSize: "lg",
+                },
             },
             defaultProps: {
                 variant: "filled",

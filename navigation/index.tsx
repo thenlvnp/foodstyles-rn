@@ -24,6 +24,8 @@ import NotFoundScreen from "../screens/NotFoundScreen";
 import SignupScreen from "../screens/SignupScreen";
 import TabOneScreen from "../screens/TabOneScreen";
 import TabTwoScreen from "../screens/TabTwoScreen";
+import { useAuthStore } from "../store";
+import shallow from "zustand/shallow";
 import {
     RootStackParamList,
     RootTabParamList,
@@ -53,28 +55,44 @@ export default function Navigation({
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 function RootNavigator() {
+    const { isChecking, isLoggedIn } = useAuthStore(
+        (state) => ({
+            isChecking: state.isCheckingSession,
+            isLoggedIn: state.isLoggedIn,
+        }),
+        shallow
+    );
+    if (isChecking) {
+        return null;
+    }
     return (
         <Stack.Navigator>
-            <Stack.Screen
-                name="Root"
-                options={{ headerShown: false }}
-                component={LandingScreen}
-            />
-            <Stack.Screen
-                name="Signup"
-                options={{ headerShown: false }}
-                component={SignupScreen}
-            />
-            <Stack.Screen
-                name="Login"
-                options={{ headerShown: false }}
-                component={LoginScreen}
-            />
-            <Stack.Screen
-                name="EditProfile"
-                options={{ headerShown: false }}
-                component={EditProfileScreen}
-            />
+            {!isLoggedIn && (
+                <>
+                    <Stack.Screen
+                        name="Root"
+                        options={{ headerShown: false }}
+                        component={LandingScreen}
+                    />
+                    <Stack.Screen
+                        name="Signup"
+                        options={{ headerShown: false }}
+                        component={SignupScreen}
+                    />
+                    <Stack.Screen
+                        name="Login"
+                        options={{ headerShown: false }}
+                        component={LoginScreen}
+                    />
+                </>
+            )}
+            {isLoggedIn && (
+                <Stack.Screen
+                    name="EditProfile"
+                    options={{ headerShown: false }}
+                    component={EditProfileScreen}
+                />
+            )}
         </Stack.Navigator>
     );
 }
